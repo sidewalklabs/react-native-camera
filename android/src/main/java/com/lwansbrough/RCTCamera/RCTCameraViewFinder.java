@@ -74,7 +74,11 @@ class RCTCameraViewFinder extends TextureView implements TextureView.SurfaceText
     }
 
     public void setFlashMode(int flashMode) {
-        RCTCamera.getInstance().setTorchMode(_cameraType, flashMode);
+        RCTCamera.getInstance().setFlashMode(_cameraType, flashMode);
+    }
+
+    public void setFocusMode(int focusMode) {
+        RCTCamera.getInstance().setFocusMode(_cameraType, focusMode);
     }
 
     private void startPreview() {
@@ -95,11 +99,6 @@ class RCTCameraViewFinder extends TextureView implements TextureView.SurfaceText
             try {
                 _camera = RCTCamera.getInstance().acquireCameraInstance(_cameraType);
                 Camera.Parameters parameters = _camera.getParameters();
-                // set autofocus
-                List<String> focusModes = parameters.getSupportedFocusModes();
-                if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
-                    parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
-                }
                 // set picture size
                 // defaults to max available size
                 Camera.Size optimalPictureSize = RCTCamera.getInstance().getBestPictureSize(_cameraType, Integer.MAX_VALUE, Integer.MAX_VALUE);

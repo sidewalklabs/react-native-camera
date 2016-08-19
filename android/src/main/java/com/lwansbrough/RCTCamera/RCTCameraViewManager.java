@@ -1,6 +1,7 @@
 package com.lwansbrough.RCTCamera;
 
 import android.support.annotation.Nullable;
+import android.util.Log;
 import com.facebook.react.uimanager.*;
 import com.facebook.react.uimanager.annotations.ReactProp;
 
@@ -50,6 +51,11 @@ public class RCTCameraViewManager extends ViewGroupManager<RCTCameraView> {
     @ReactProp(name = "flashMode")
     public void setFlashMode(RCTCameraView view, int flashMode) {
         view.setFlashMode(flashMode);
+    }
+
+    @ReactProp(name = "focusMode")
+    public void setFocusMode(RCTCameraView view, int focusMode) {
+        view.setFocusMode(focusMode);
     }
 
     @ReactProp(name = "orientation")

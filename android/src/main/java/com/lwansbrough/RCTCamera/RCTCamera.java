@@ -5,6 +5,7 @@
 package com.lwansbrough.RCTCamera;
 
 import android.hardware.Camera;
+import android.util.Log;
 
 import java.util.HashMap;
 import java.util.List;
@@ -59,51 +60,69 @@ public class RCTCamera {
         return cameraInfo.previewHeight;
     }
 
-    public Camera.Size getBestPreviewSize(int type, int width, int height)
-    {
+    public Camera.Size getBestPreviewSize(int type) {
+        return getBestPreviewSize(type, Integer.MAX_VALUE, Integer.MAX_VALUE);
+    }
+
+    public Camera.Size getBestPreviewSize(int type, int max_width, int max_height) {
         Camera camera = _cameras.get(type);
+        if(camera == null) return null;
+
         Camera.Size result = null;
-        if(camera == null) {
-            return null;
-        }
         Camera.Parameters params = camera.getParameters();
         for (Camera.Size size : params.getSupportedPreviewSizes()) {
-            if (size.width <= width && size.height <= height) {
-                if (result == null) {
-                    result = size;
-                } else {
-                    int resultArea = result.width * result.height;
-                    int newArea = size.width * size.height;
+            if (result == null) {
+                result = size;
+            }
 
-                    if (newArea > resultArea) {
-                        result = size;
-                    }
-                }
+            if (size.width*size.height > result.width*result.height &&
+                size.width < max_width &&
+                size.height < max_height) {
+                result = size;
             }
         }
         return result;
     }
 
-    public Camera.Size getBestPictureSize(int type, int width, int height)
-    {
+    public Camera.Size getSmallestPreviewSize(int type) {
+        return getSmallestPreviewSize(type, 0, 0);
+    }
+
+    public Camera.Size getSmallestPreviewSize(int type, int min_width, int min_height) {
         Camera camera = _cameras.get(type);
+        if(camera == null) return null;
+
         Camera.Size result = null;
-        if(camera == null) {
-            return null;
+        Camera.Parameters params = camera.getParameters();
+        for (Camera.Size size : params.getSupportedPreviewSizes()) {
+            if (result == null) {
+                result = size;
+            }
+
+            if (size.width*size.height < result.width*result.height &&
+                size.width > min_width &&
+                size.height > min_height) {
+                result = size;
+            }
         }
+        return result;
+    }
+
+    public Camera.Size getBestPictureSize(int type, int max_width, int max_height) {
+        Camera camera = _cameras.get(type);
+        if(camera == null) return null;
+
+        Camera.Size result = null;
         Camera.Parameters params = camera.getParameters();
         for (Camera.Size size : params.getSupportedPictureSizes()) {
-            if (size.width <= width && size.height <= height) {
-                if (result == null) {
-                    result = size;
-                } else {
-                    int resultArea = result.width * result.height;
-                    int newArea = size.width * size.height;
+            if (result == null) {
+                result = size;
+            }
 
-                    if (newArea > resultArea) {
-                        result = size;
-                    }
-                }
+            if (size.width*size.height > result.width*result.height &&
+                size.width < max_width &&
+                size.height < max_height) {
+                result = size;
             }
         }
         return result;
@@ -228,6 +247,37 @@ public class RCTCamera {
         }
     }
 
+    public void setFocusMode(int cameraType, int focusMode) {
+        Log.d("ReactNative", "focusMode = "+focusMode+", camera type = " + cameraType);
+        Camera camera = acquireCameraInstance(cameraType);
+        // Camera camera = _cameras.get(cameraType);
+        Log.d("ReactNative", "camera: " + camera);
+        if (null == camera) {
+            return;
+        }
+
+        Camera.Parameters parameters = camera.getParameters();
+        String value = parameters.getFocusMode();
+        Log.d("ReactNative", "current focus mode in camera = " + value);
+        switch (focusMode) {
+            case RCTCameraModule.RCT_CAMERA_FOCUS_MODE_AUTO:
+                value = Camera.Parameters.FOCUS_MODE_AUTO;
+                break;
+            case RCTCameraModule.RCT_CAMERA_FOCUS_MODE_INFINITY:
+                value = Camera.Parameters.FOCUS_MODE_INFINITY;
+                break;
+            case RCTCameraModule.RCT_CAMERA_FOCUS_MODE_EDOF:
+                value = Camera.Parameters.FOCUS_MODE_EDOF;
+                break;
+        }
+        List<String> focusModes = parameters.getSupportedFocusModes();
+        Log.d("ReactNative", "focusModes = " + focusModes);
+        if (focusModes != null && focusModes.contains(value)) {
+            parameters.setFocusMode(value);
+            camera.setParameters(parameters);
+        }
+    }
+
     public void adjustCameraRotationToDeviceOrientation(int type, int deviceOrientation)
     {
         Camera camera = _cameras.get(type);
@@ -279,13 +329,13 @@ public class RCTCamera {
         Camera.Parameters parameters = camera.getParameters();
         parameters.setRotation(cameraInfo.rotation);
 
-        // set preview size
-        // defaults to highest resolution available
-        Camera.Size optimalPreviewSize = getBestPreviewSize(type, Integer.MAX_VALUE, Integer.MAX_VALUE);
-        int width = optimalPreviewSize.width;
-        int height = optimalPreviewSize.height;
+        // set preview size: smallest preview size that is larger than 400x400
+        Camera.Size optimalPreviewSize = getSmallestPreviewSize(type, 400, 400);
+        parameters.setPreviewSize(optimalPreviewSize.width, optimalPreviewSize.height);
+        // hard coded refresh rate for preview in frames per 1000 seconds
+        // TODO: make configurable
+        parameters.setPreviewFpsRange(7000, 8000);
 
-        parameters.setPreviewSize(width, height);
         try {
             camera.setParameters(parameters);
         } catch (Exception e) {

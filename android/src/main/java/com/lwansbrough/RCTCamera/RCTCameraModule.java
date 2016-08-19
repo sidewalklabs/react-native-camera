@@ -7,7 +7,7 @@ package com.lwansbrough.RCTCamera;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.Camera;
-import android.media.MediaActionSound;
+// import android.media.MediaActionSound;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -50,6 +50,9 @@ public class RCTCameraModule extends ReactContextBaseJavaModule {
     public static final int RCT_CAMERA_TORCH_MODE_OFF = 0;
     public static final int RCT_CAMERA_TORCH_MODE_ON = 1;
     public static final int RCT_CAMERA_TORCH_MODE_AUTO = 2;
+    public static final int RCT_CAMERA_FOCUS_MODE_AUTO = 0;
+    public static final int RCT_CAMERA_FOCUS_MODE_INFINITY = 1;
+    public static final int RCT_CAMERA_FOCUS_MODE_EDOF = 2;
     public static final int MEDIA_TYPE_IMAGE = 1;
     public static final int MEDIA_TYPE_VIDEO = 2;
 
@@ -81,6 +84,7 @@ public class RCTCameraModule extends ReactContextBaseJavaModule {
                 put("Orientation", getOrientationConstants());
                 put("FlashMode", getFlashModeConstants());
                 put("TorchMode", getTorchModeConstants());
+                put("FocusMode", getFocusModeConstants());
             }
 
             private Map<String, Object> getAspectConstants() {
@@ -172,6 +176,16 @@ public class RCTCameraModule extends ReactContextBaseJavaModule {
                     }
                 });
             }
+
+            private Map<String, Object> getFocusModeConstants() {
+                return Collections.unmodifiableMap(new HashMap<String, Object>() {
+                    {
+                        put("auto", RCT_CAMERA_FOCUS_MODE_AUTO);
+                        put("infinity", RCT_CAMERA_FOCUS_MODE_INFINITY);
+                        put("edof", RCT_CAMERA_FOCUS_MODE_EDOF);
+                    }
+                });
+            }
         });
     }
 
@@ -196,17 +210,25 @@ public class RCTCameraModule extends ReactContextBaseJavaModule {
 
     public void captureWithOrientation(final ReadableMap options, final Promise promise, int deviceOrientation) {
         Camera camera = RCTCamera.getInstance().acquireCameraInstance(options.getInt("type"));
+        Log.d("ReactNative", "capture camera: " + camera);
         if (null == camera) {
             promise.reject("No camera found.");
             return;
         }
+        Log.d("ReactNative", "CAMERA PARAMETERS, FOCUS = " + camera.getParameters().getFocusMode());
+        Camera.Size preview = camera.getParameters().getPreviewSize();
+        Log.d("ReactNative", "CAMERA PARAMETERS, preview = " + preview.width + " x " + preview.height);
+        int[] previewFpsRange = {-1, -1};
+        camera.getParameters().getPreviewFpsRange(previewFpsRange);
+        Log.d("ReactNative", "CAMERA PARAMETERS, preview fps = [" + previewFpsRange[0] + ", " + previewFpsRange[1] + "]");
 
-        if (options.hasKey("playSoundOnCapture") && options.getBoolean("playSoundOnCapture")) {
-            MediaActionSound sound = new MediaActionSound();
-            sound.play(MediaActionSound.SHUTTER_CLICK);
-        }
+        // if (options.hasKey("playSoundOnCapture") && options.getBoolean("playSoundOnCapture")) {
+        //     MediaActionSound sound = new MediaActionSound();
+        //     sound.play(MediaActionSound.SHUTTER_CLICK);
+        // }
 
         if (options.hasKey("quality")) {
+            Log.d("ReactNative", "CAMERA PARAMETERS, CAPTURE QUALITY = " + options.getString("quality"));
             RCTCamera.getInstance().setCaptureQuality(options.getInt("type"), options.getString("quality"));
         }
 
@@ -214,7 +236,7 @@ public class RCTCameraModule extends ReactContextBaseJavaModule {
         camera.takePicture(null, null, new Camera.PictureCallback() {
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
-                camera.stopPreview();
+                // camera.stopPreview();
                 camera.startPreview();
                 WritableMap response = new WritableNativeMap();
                 switch (options.getInt("target")) {
